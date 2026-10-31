@@ -19,58 +19,71 @@ import java.util.Optional;
 import java.util.Random;
 
 /**
- * La computadora. Busca con minimax (forma negamax) y poda alfa-beta: prueba cada jugada sobre el
- * tablero que recibe y la deshace. Ese tablero tiene que ser una copia: nunca el de la partida.
+ * Motor de busqueda (Adaptee del Adapter): minimax en forma negamax con poda alfa-beta. Tiene su
+ * propia interfaz: analiza a la profundidad que se le pida y no sabe de niveles ni de la partida;
+ * el juego lo usa a traves de AdaptadorMinimax. Prueba cada jugada sobre el tablero que recibe y la
+ * deshace: ese tablero tiene que ser una copia, nunca el de la partida.
  * Los puntajes estan en centipeones y siempre desde el punto de vista del que mueve.
  */
-public class MotorIA {
+public class MotorMinimax {
     private static final int INFINITO = 1_000_000;
     private static final int MATE = 100_000;
 
-    private final NivelIA nivel;
+    /** Una jugada con el puntaje que le dio la busqueda. */
+    public record JugadaEvaluada(Jugada jugada, int puntaje) {
+    }
+
     private final Random azar;
     private final ValidadorJaque validadorJaque = new ValidadorJaque();
     // Los destinos ya salen de movimientosPosibles: alcanza con mirar que el rey no quede en jaque.
     private final GeneradorJugadas generador = new GeneradorJugadas(new ValidadorJugada(List.of()), validadorJaque);
 
-    public MotorIA(NivelIA nivel) {
-        this(nivel, new Random());
+    public MotorMinimax() {
+        this(new Random());
     }
 
-    public MotorIA(NivelIA nivel, Random azar) {
-        this.nivel = nivel;
+    public MotorMinimax(Random azar) {
         this.azar = azar;
     }
 
-    /** La jugada elegida para el color que mueve; vacio si no tiene ninguna (mate o ahogado). */
-    public Optional<Jugada> elegir(Tablero tablero, Color turno) {
-        List<Jugada> jugadas = generador.legales(tablero, turno);
-        if (jugadas.isEmpty()) return Optional.empty();
-        Collections.shuffle(jugadas, azar);   // entre jugadas iguales, no siempre la misma
-        ordenar(tablero, jugadas);
-
-        List<Integer> valores = new ArrayList<>();
+    /** La mejor jugada mirando profundidad (1 o mas) jugadas hacia adelante; vacio si no hay ninguna. */
+    public Optional<Jugada> mejorJugada(Tablero tablero, Color turno, int profundidad) {
         int mejor = -INFINITO;
-        Jugada mejorJugada = jugadas.get(0);
-        for (Jugada jugada : jugadas) {
-            // Con margen hace falta el valor exacto de cada jugada, asi que no se poda en la raiz.
-            int alfa = nivel.getMargen() > 0 ? -INFINITO : mejor;
-            Movimiento m = tablero.mover(jugada);
-            int valor = -negamax(tablero, turno.opuesto(), nivel.getProfundidad() - 1, -INFINITO, -alfa, 1);
-            tablero.deshacer(m);
-            valores.add(valor);
+        Jugada mejorJugada = null;
+        for (Jugada jugada : candidatas(tablero, turno)) {
+            int valor = puntuar(tablero, turno, jugada, profundidad, mejor);
             if (valor > mejor) {
                 mejor = valor;
                 mejorJugada = jugada;
             }
         }
-        if (nivel.getMargen() == 0) return Optional.of(mejorJugada);
+        return Optional.ofNullable(mejorJugada);
+    }
 
-        List<Jugada> aceptables = new ArrayList<>();
-        for (int i = 0; i < jugadas.size(); i++) {
-            if (valores.get(i) >= mejor - nivel.getMargen()) aceptables.add(jugadas.get(i));
+    /** Puntaje exacto de cada jugada legal, de la mejor a la peor. Mas lento: en la raiz no poda. */
+    public List<JugadaEvaluada> evaluarTodas(Tablero tablero, Color turno, int profundidad) {
+        List<JugadaEvaluada> evaluadas = new ArrayList<>();
+        for (Jugada jugada : candidatas(tablero, turno)) {
+            evaluadas.add(new JugadaEvaluada(jugada, puntuar(tablero, turno, jugada, profundidad, -INFINITO)));
         }
-        return Optional.of(aceptables.get(azar.nextInt(aceptables.size())));
+        evaluadas.sort(Comparator.comparingInt((JugadaEvaluada e) -> -e.puntaje()));
+        return evaluadas;
+    }
+
+    /** Jugadas legales mezcladas (entre iguales, no siempre la misma) y ordenadas para podar mas. */
+    private List<Jugada> candidatas(Tablero tablero, Color turno) {
+        List<Jugada> jugadas = generador.legales(tablero, turno);
+        Collections.shuffle(jugadas, azar);
+        ordenar(tablero, jugadas);
+        return jugadas;
+    }
+
+    /** Valor de la jugada; si no supera alfa, el resultado solo dice eso (puede ser una cota). */
+    private int puntuar(Tablero tablero, Color turno, Jugada jugada, int profundidad, int alfa) {
+        Movimiento m = tablero.mover(jugada);
+        int valor = -negamax(tablero, turno.opuesto(), profundidad - 1, -INFINITO, -alfa, 1);
+        tablero.deshacer(m);
+        return valor;
     }
 
     private int negamax(Tablero tablero, Color turno, int profundidad, int alfa, int beta, int distancia) {

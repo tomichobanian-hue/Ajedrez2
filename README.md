@@ -17,5 +17,6 @@ Juego de ajedrez para dos jugadores en la misma computadora, o contra la computa
 - `ajedrez.modelo`      tablero, piezas, estrategias de movimiento, almacen de piezas
 - `ajedrez.validacion`  validadores (jugada, jaque, tablas) y reglas
 - `ajedrez.partida`     Juego, estados, reloj, historial (Command) y ControladorJuego
-- `ajedrez.ia`          la computadora: generador de jugadas legales y MotorIA (minimax con poda alfa-beta)
+- `ajedrez.ia`          la computadora (patron Adapter): JugadorComputadora es lo que pide el juego,
+                        MotorMinimax el motor (minimax con poda alfa-beta) y AdaptadorMinimax los une
 - `ajedrez.ui`          interfaz JavaFX (solo usa ControladorJuego)

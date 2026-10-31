@@ -1,6 +1,7 @@
 package ajedrez.partida;
 
-import ajedrez.ia.MotorIA;
+import ajedrez.ia.AdaptadorMinimax;
+import ajedrez.ia.MotorMinimax;
 import ajedrez.ia.NivelIA;
 import ajedrez.modelo.AlmacenPorMapa;
 import ajedrez.modelo.Color;
@@ -50,7 +51,7 @@ public class ControladorJuego {
 
     /** Juega la computadora el turno actual. Tarda: llamarlo fuera del hilo de la interfaz. */
     public boolean jugarComputadora(NivelIA nivel) {
-        return partida().jugarComputadora(new MotorIA(nivel));
+        return partida().jugarComputadora(new AdaptadorMinimax(new MotorMinimax(), nivel));
     }
 
     public void retroceder() {
