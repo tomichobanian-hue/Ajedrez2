@@ -785,12 +785,15 @@ package "ajedrez.ia\nNÚCLEO" as ia #E6F2F1 {
   note bottom of MotorMinimax
     Adaptee: interfaz propia, sin niveles.
     Minimax (negamax) con poda alfa-beta.
-    Prueba y deshace jugadas sobre la copia.
+    Prueba y deshace jugadas (mover / deshacer)
+    sobre una copia del Tablero.
     Puntajes en centipeones.
   end note
 
   note bottom of GeneradorJugadas
     Jugadas legales con las 4 promociones.
+    DI por constructor: ValidadorMovimiento
+    y ValidadorJaque (de validacion).
     PerftTest lo valida contra
     los conteos conocidos.
   end note
@@ -913,8 +916,6 @@ ComandoMover --> EstadoJuego : estadoAnterior
 AdaptadorMinimax "1" --> "1" MotorMinimax : adaptee\nDI
 AdaptadorMinimax --> NivelIA
 MotorMinimax "1" *-- "1" GeneradorJugadas
-GeneradorJugadas --> ValidadorMovimiento : DI
-GeneradorJugadas --> ValidadorJaque : DI
 ConfiguracionPartida --> NivelIA
 
 ValidadorJugada "1" *-- "0..*" ReglaMovimiento : DI
@@ -948,7 +949,6 @@ Juego ..> EnCurso : estado inicial
 Juego ..> Jugada : <<crea>>
 Juego ..> JugadorComputadora : jugarComputadora
 MotorMinimax ..> JugadaEvaluada : <<crea>>
-MotorMinimax ..> Tablero : mover / deshacer\nen la copia
 
 EnCurso ..> Transiciones
 Jaque ..> Transiciones

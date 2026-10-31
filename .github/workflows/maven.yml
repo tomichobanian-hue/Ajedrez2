@@ -65,15 +65,7 @@ jobs:
         shell: bash
         env:
           GRAPHVIZ_DOT: C:\Program Files\Graphviz\bin\dot.exe
-        run: |
-          java -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -stdrpt:1 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
-          f=diagrama-arquitectura-completa/Arquitectura_Ajedrez_Completa.puml
-          mkdir -p var
-          sed -e 's/^@startuml .*/@startuml A_sin_ia_hacia_nucleo/' -e '/^GeneradorJugadas --> /d' -e '/^MotorMinimax \.\.> Tablero/d' $f > var/A.puml
-          sed -e 's/^@startuml .*/@startuml B_sin_entradas_a_ia/' -e '/^ControladorJuego \.\.> AdaptadorMinimax/d' -e '/^ControladorJuego \.\.> MotorMinimax/d' -e '/^Juego \.\.> JugadorComputadora/d' -e '/^ConfiguracionPartida --> NivelIA/d' $f > var/B.puml
-          sed -e 's/^@startuml .*/@startuml C_sin_cruces/' -e '/^GeneradorJugadas --> /d' -e '/^MotorMinimax \.\.> Tablero/d' -e '/^ControladorJuego \.\.> AdaptadorMinimax/d' -e '/^ControladorJuego \.\.> MotorMinimax/d' -e '/^Juego \.\.> JugadorComputadora/d' -e '/^ConfiguracionPartida --> NivelIA/d' $f > var/C.puml
-          awk '/^package "ajedrez.ia/{skip=1} skip&&/^}/{skip=0; next} !skip' $f | grep -v -E '^(AdaptadorMinimax|MotorMinimax|GeneradorJugadas|ControladorJuego \.\.> (AdaptadorMinimax|MotorMinimax)|Juego \.\.> JugadorComputadora|ConfiguracionPartida --> NivelIA)' | sed 's/^@startuml .*/@startuml D_sin_paquete_ia/' > var/D.puml
-          java -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -tpng -o "$PWD/dist" var/*.puml
+        run: java -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -stdrpt:1 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
