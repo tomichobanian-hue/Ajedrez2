@@ -983,7 +983,6 @@ VistaAjedrez -[hidden]down- Juego
 Juego -[hidden]down- ValidadorJugada
 ValidadorJugada -[hidden]down- Tablero
 Tablero -[hidden]down- MovimientoInvalidoException
-Juego -[hidden]right- JugadorComputadora
 
 note as Alcance
   **Qué no está en el código, y por eso no está en el diagrama**

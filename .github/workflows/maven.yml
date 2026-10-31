@@ -52,6 +52,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -65,7 +67,10 @@ jobs:
         shell: bash
         env:
           GRAPHVIZ_DOT: C:\Program Files\Graphviz\bin\dot.exe
-        run: java -jar plantuml.jar -stdrpt:1 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
+        run: |
+          java -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -stdrpt:1 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
+          mkdir -p comparar && git show bbb2533:diagrama-arquitectura-completa/Arquitectura_Ajedrez_Completa.puml > comparar/Original.puml
+          java -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -tpng -o "$PWD/dist" comparar/Original.puml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
