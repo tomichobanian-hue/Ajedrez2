@@ -65,8 +65,9 @@ jobs:
         shell: bash
         env:
           GRAPHVIZ_DOT: C:\Program Files\Graphviz\bin\dot.exe
-        run: java -jar plantuml.jar -failfast2 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
+        run: java -jar plantuml.jar -stdrpt:1 -tpng -o "$PWD/dist" diagrama-arquitectura-completa/*.puml
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: diagrama
           path: dist/
