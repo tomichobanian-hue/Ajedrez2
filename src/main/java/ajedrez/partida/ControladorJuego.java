@@ -1,5 +1,7 @@
 package ajedrez.partida;
 
+import ajedrez.ia.MotorIA;
+import ajedrez.ia.NivelIA;
 import ajedrez.modelo.AlmacenPorMapa;
 import ajedrez.modelo.Color;
 import ajedrez.modelo.Pieza;
@@ -44,6 +46,11 @@ public class ControladorJuego {
 
     public void deshacer() {
         partida().deshacer();
+    }
+
+    /** Juega la computadora el turno actual. Tarda: llamarlo fuera del hilo de la interfaz. */
+    public boolean jugarComputadora(NivelIA nivel) {
+        return partida().jugarComputadora(new MotorIA(nivel));
     }
 
     public void retroceder() {

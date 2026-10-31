@@ -2,6 +2,7 @@ package ajedrez.partida;
 
 import ajedrez.excepciones.MovimientoInvalidoException;
 import ajedrez.excepciones.ReyEnPeligroException;
+import ajedrez.ia.MotorIA;
 import ajedrez.modelo.Color;
 import ajedrez.modelo.Jugada;
 import ajedrez.modelo.Movimiento;
@@ -69,6 +70,29 @@ public final class Juego {
 
     public synchronized void deshacer() {
         estado.deshacer(this);
+    }
+
+    /**
+     * Mueve la computadora. Piensa sobre una copia sin bloquear la partida (el reloj sigue corriendo)
+     * y solo mueve si mientras tanto nadie movio ni deshizo. Devuelve si movio.
+     */
+    public boolean jugarComputadora(MotorIA motor) {
+        Tablero copia;
+        Color turno;
+        Movimiento ultimo;
+        synchronized (this) {
+            if (estado.estaTerminada() || historial.enRevision()) return false;
+            copia = tablero.copiar();
+            turno = turnero.getTurnoActual();
+            ultimo = tablero.getUltimoMovimiento().orElse(null);
+        }
+        Optional<Jugada> jugada = motor.elegir(copia, turno);
+        synchronized (this) {
+            if (jugada.isEmpty() || estado.estaTerminada() || historial.enRevision()) return false;
+            if (turnero.getTurnoActual() != turno || tablero.getUltimoMovimiento().orElse(null) != ultimo) return false;
+            estado.mover(this, jugada.get());
+            return true;
+        }
     }
 
     public synchronized void retroceder() {

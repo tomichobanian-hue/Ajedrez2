@@ -1,5 +1,7 @@
 package ajedrez.ui;
 
+import ajedrez.ia.NivelIA;
+import ajedrez.modelo.Color;
 import ajedrez.partida.ControladorJuego;
 import java.time.Duration;
 import java.util.Optional;
@@ -11,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
@@ -19,6 +22,10 @@ import javafx.stage.Stage;
 
 /** Ventana principal: pide la configuracion, crea la partida y refresca la vista cada 100 ms. */
 public class AjedrezApp extends Application {
+    private static final String OTRA_PERSONA = "Otra persona";
+    private static final String CON_BLANCAS = "La computadora (yo juego con blancas)";
+    private static final String CON_NEGRAS = "La computadora (yo juego con negras)";
+
     private final ControladorJuego controlador = new ControladorJuego();
     private Stage ventana;
     private VistaAjedrez vista;
@@ -59,29 +66,46 @@ public class AjedrezApp extends Application {
     private Optional<ConfiguracionPartida> pedirConfiguracion() {
         Dialog<ConfiguracionPartida> dialogo = new Dialog<>();
         dialogo.setTitle("Nueva partida");
-        dialogo.setHeaderText("Dos jugadores en la misma computadora");
+        dialogo.setHeaderText("Elegi contra quien jugar y el tiempo");
 
+        ComboBox<String> rival = new ComboBox<>();
+        rival.getItems().addAll(OTRA_PERSONA, CON_BLANCAS, CON_NEGRAS);
+        rival.setValue(OTRA_PERSONA);
+        ComboBox<NivelIA> nivel = new ComboBox<>();
+        nivel.getItems().addAll(NivelIA.values());
+        nivel.setValue(NivelIA.MEDIO);
         Spinner<Integer> minutos = new Spinner<>(1, 180, 10);
         Spinner<Integer> incremento = new Spinner<>(0, 60, 0);
         minutos.setEditable(true);
         incremento.setEditable(true);
         CheckBox girar = new CheckBox("Girar el tablero en cada turno");
         girar.setSelected(true);
+        // El nivel solo importa contra la computadora; girar el tablero, solo entre dos personas.
+        nivel.disableProperty().bind(rival.valueProperty().isEqualTo(OTRA_PERSONA));
+        girar.disableProperty().bind(rival.valueProperty().isNotEqualTo(OTRA_PERSONA));
 
         GridPane rejilla = new GridPane();
         rejilla.setHgap(10);
         rejilla.setVgap(10);
         rejilla.setPadding(new Insets(10));
-        rejilla.addRow(0, new Label("Minutos por jugador:"), minutos);
-        rejilla.addRow(1, new Label("Incremento por jugada (segundos):"), incremento);
-        rejilla.add(girar, 0, 2, 2, 1);
+        rejilla.addRow(0, new Label("Rival:"), rival);
+        rejilla.addRow(1, new Label("Nivel de la computadora:"), nivel);
+        rejilla.addRow(2, new Label("Minutos por jugador:"), minutos);
+        rejilla.addRow(3, new Label("Incremento por jugada (segundos):"), incremento);
+        rejilla.add(girar, 0, 4, 2, 1);
         dialogo.getDialogPane().setContent(rejilla);
 
         ButtonType jugar = new ButtonType("Jugar", ButtonBar.ButtonData.OK_DONE);
         dialogo.getDialogPane().getButtonTypes().addAll(jugar, ButtonType.CANCEL);
         dialogo.setResultConverter(b -> {
             if (b != jugar) return null;
-            return new ConfiguracionPartida(valor(minutos, 10, 1, 180), valor(incremento, 0, 0, 60), girar.isSelected());
+            Color computadora = switch (rival.getValue()) {
+                case CON_BLANCAS -> Color.NEGRO;
+                case CON_NEGRAS -> Color.BLANCO;
+                default -> null;
+            };
+            return new ConfiguracionPartida(valor(minutos, 10, 1, 180), valor(incremento, 0, 0, 60),
+                    girar.isSelected(), computadora, nivel.getValue());
         });
         return dialogo.showAndWait();
     }

@@ -2,58 +2,25 @@ package ajedrez;
 
 import static org.junit.Assert.assertEquals;
 
-import ajedrez.excepciones.MovimientoInvalidoException;
+import ajedrez.ia.GeneradorJugadas;
 import ajedrez.modelo.AlmacenPiezas;
 import ajedrez.modelo.AlmacenPorMapa;
 import ajedrez.modelo.AlmacenPorMatriz;
 import ajedrez.modelo.Color;
 import ajedrez.modelo.Jugada;
 import ajedrez.modelo.Movimiento;
-import ajedrez.modelo.Pieza;
-import ajedrez.modelo.Posicion;
 import ajedrez.modelo.Tablero;
-import ajedrez.modelo.TipoPieza;
 import ajedrez.validacion.ValidadorJaque;
-import ajedrez.validacion.ValidadorJugada;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.junit.Test;
 
 /** Cuenta posiciones alcanzables (perft) y las compara con los valores conocidos del ajedrez. */
 public class PerftTest {
-    private final ValidadorJugada vj = Utiles.validadorJugada();
-    private final ValidadorJaque vk = new ValidadorJaque();
-
-    private List<Jugada> legales(Tablero t, Color turno) {
-        List<Jugada> lista = new ArrayList<>();
-        for (Map.Entry<Posicion, Pieza> e : t.piezasDe(turno).entrySet()) {
-            Posicion o = e.getKey();
-            Pieza pieza = e.getValue();
-            for (Posicion d : pieza.movimientosPosibles(o, t)) {
-                boolean promo = pieza.getTipo() == TipoPieza.PEON && d.fila() == (turno == Color.BLANCO ? 7 : 0);
-                TipoPieza[] opciones = promo
-                        ? new TipoPieza[] {TipoPieza.REINA, TipoPieza.TORRE, TipoPieza.ALFIL, TipoPieza.CABALLO}
-                        : new TipoPieza[] {null};
-                for (TipoPieza op : opciones) {
-                    Jugada j = new Jugada(o, d, op);
-                    try {
-                        vj.validar(t, j);
-                        vk.validar(t, j);
-                        lista.add(j);
-                    } catch (MovimientoInvalidoException ex) {
-                        // ilegal
-                    }
-                }
-            }
-        }
-        return lista;
-    }
+    private final GeneradorJugadas generador = new GeneradorJugadas(Utiles.validadorJugada(), new ValidadorJaque());
 
     private long perft(Tablero t, Color turno, int profundidad) {
         if (profundidad == 0) return 1;
         long total = 0;
-        for (Jugada j : legales(t, turno)) {
+        for (Jugada j : generador.legales(t, turno)) {
             Movimiento m = t.mover(j);
             total += perft(t, turno.opuesto(), profundidad - 1);
             t.deshacer(m);

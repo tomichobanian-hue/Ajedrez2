@@ -78,11 +78,13 @@ public class VistaAjedrez {
     private Color abajo = Color.BLANCO;
     private String ultimaClave = "";
     private boolean finAvisado;
+    private boolean pensando;
 
     public VistaAjedrez(ControladorJuego controlador, ConfiguracionPartida config, Runnable alPedirNuevaPartida) {
         this.controlador = controlador;
         this.config = config;
         this.alPedirNuevaPartida = alPedirNuevaPartida;
+        if (config.contraComputadora()) abajo = config.colorComputadora().opuesto();
         construir();
         refrescar();
     }
@@ -137,7 +139,7 @@ public class VistaAjedrez {
         for (Button b : List.of(btnDeshacer, btnRetroceder, btnAvanzar, btnTablas, btnAbandonar, btnNueva)) {
             b.setMaxWidth(Double.MAX_VALUE);
         }
-        btnDeshacer.setOnAction(e -> ejecutar(controlador::deshacer));
+        btnDeshacer.setOnAction(e -> ejecutar(this::deshacer));
         btnRetroceder.setOnAction(e -> ejecutar(controlador::retroceder));
         btnAvanzar.setOnAction(e -> ejecutar(controlador::avanzar));
         btnTablas.setOnAction(e -> confirmar("Acordar tablas",
@@ -145,8 +147,10 @@ public class VistaAjedrez {
         btnAbandonar.setOnAction(e -> {
             Optional<Color> turno = controlador.getTurnoActual();
             if (turno.isEmpty()) return;
-            confirmar("Abandonar", "Abandonan las " + nombre(turno.get()) + "?",
-                    () -> controlador.abandonar(turno.get()));
+            // Contra la computadora abandona siempre la persona, sea o no su turno.
+            Color quien = config.contraComputadora() ? config.colorComputadora().opuesto() : turno.get();
+            confirmar("Abandonar", "Abandonan las " + nombre(quien) + "?",
+                    () -> controlador.abandonar(quien));
         });
         btnNueva.setOnAction(e -> alPedirNuevaPartida.run());
 
@@ -196,6 +200,45 @@ public class VistaAjedrez {
         refrescar();
     }
 
+    /** Contra la computadora deshace tambien su respuesta, para que vuelva a mover la persona. */
+    private void deshacer() {
+        controlador.deshacer();
+        if (!turnoDeComputadora()) return;
+        try {
+            controlador.deshacer();
+        } catch (MovimientoInvalidoException e) {
+            // la computadora abrio la partida: vuelve a jugar ella
+        }
+    }
+
+    /** La computadora piensa en otro hilo para no congelar la ventana. */
+    private void jugarComputadora() {
+        pensando = true;
+        Thread hilo = new Thread(() -> {
+            boolean movio = false;
+            String error = null;
+            try {
+                movio = controlador.jugarComputadora(config.nivel());
+            } catch (RuntimeException e) {
+                error = "La computadora no pudo mover: " + e.getMessage();
+            }
+            boolean redibujar = movio;
+            String aviso = error;
+            Platform.runLater(() -> {
+                pensando = false;
+                if (aviso != null) mensaje.setText(aviso);
+                if (redibujar) refrescar();
+            });
+        }, "computadora");
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    private boolean turnoDeComputadora() {
+        Optional<Color> turno = controlador.getTurnoActual();
+        return config.contraComputadora() && turno.isPresent() && turno.get() == config.colorComputadora();
+    }
+
     private void confirmar(String titulo, String texto, Runnable accion) {
         Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, texto, ButtonType.YES, ButtonType.NO);
         alerta.setTitle(titulo);
@@ -204,7 +247,7 @@ public class VistaAjedrez {
     }
 
     private void alHacerClic(int filaPantalla, int columnaPantalla) {
-        if (controlador.getEstado().estaTerminada() || controlador.enRevision()) return;
+        if (controlador.getEstado().estaTerminada() || controlador.enRevision() || turnoDeComputadora()) return;
         Posicion clic = aPosicion(filaPantalla, columnaPantalla);
         if (seleccion != null && destinos.contains(clic)) {
             intentarMover(seleccion, clic);
@@ -269,7 +312,7 @@ public class VistaAjedrez {
     public void refrescar() {
         Optional<Color> turno = controlador.getTurnoActual();
         boolean revision = controlador.enRevision();
-        if (config.girarTablero() && turno.isPresent() && !revision) abajo = turno.get();
+        if (config.girarTablero() && !config.contraComputadora() && turno.isPresent() && !revision) abajo = turno.get();
 
         actualizarRelojes(turno);
         actualizarEstado(turno, revision);
@@ -278,7 +321,7 @@ public class VistaAjedrez {
         btnAvanzar.setDisable(!revision);
         btnDeshacer.setDisable(revision || controlador.getEstado().estaTerminada());
         boolean terminada = controlador.getEstado().estaTerminada();
-        btnTablas.setDisable(terminada || revision);
+        btnTablas.setDisable(terminada || revision || config.contraComputadora());
         btnAbandonar.setDisable(terminada || revision);
 
         TableroConsulta tablero = controlador.getTableroRevision();
@@ -291,6 +334,7 @@ public class VistaAjedrez {
             finAvisado = true;
             Platform.runLater(this::avisarFin);
         }
+        if (!terminada && !revision && !pensando && turnoDeComputadora()) jugarComputadora();
     }
 
     private String claveDe(TableroConsulta tablero, boolean revision) {
@@ -390,8 +434,8 @@ public class VistaAjedrez {
 
     private void actualizarRelojes(Optional<Color> turno) {
         Color arriba = abajo.opuesto();
-        nombreArriba.setText(nombre(arriba));
-        nombreAbajo.setText(nombre(abajo));
+        nombreArriba.setText(nombreJugador(arriba));
+        nombreAbajo.setText(nombreJugador(abajo));
         relojArriba.setText(formato(controlador.getTiempoRestante(arriba)));
         relojAbajo.setText(formato(controlador.getTiempoRestante(abajo)));
         marcar(panelArriba, relojArriba, turno.isPresent() && turno.get() == arriba, arriba);
@@ -417,10 +461,12 @@ public class VistaAjedrez {
                     : texto + ". La partida termino en tablas.");
         } else if (revision) {
             estado.setText("Revisando la partida. El tablero real no cambia; avanza hasta la ultima jugada para seguir.");
-        } else if (controlador.getEstado() instanceof Jaque) {
-            estado.setText("Jaque! Mueven las " + nombre(turno.orElse(Color.BLANCO)) + ".");
         } else {
-            estado.setText("Mueven las " + nombre(turno.orElse(Color.BLANCO)) + ".");
+            Color mueve = turno.orElse(Color.BLANCO);
+            String texto = turnoDeComputadora()
+                    ? "Piensa la computadora (" + nombre(mueve) + ")..."
+                    : "Mueven las " + nombre(mueve) + ".";
+            estado.setText(controlador.getEstado() instanceof Jaque ? "Jaque! " + texto : texto);
         }
     }
 
@@ -445,6 +491,10 @@ public class VistaAjedrez {
 
     private static String nombre(Color color) {
         return color == Color.BLANCO ? "blancas" : "negras";
+    }
+
+    private String nombreJugador(Color color) {
+        return nombre(color) + (color == config.colorComputadora() ? " (computadora)" : "");
     }
 
     static String formato(Duration d) {
