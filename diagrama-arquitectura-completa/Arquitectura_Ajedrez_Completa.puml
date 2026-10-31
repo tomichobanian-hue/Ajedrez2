@@ -717,8 +717,7 @@ package "ajedrez.modelo\nNÚCLEO" as modelo #F3EEF8 {
   end note
 }
 
-package "ajedrez.ia
-NÚCLEO" as ia #E6F2F1 {
+package "ajedrez.ia\nNÚCLEO" as ia #E6F2F1 {
   interface JugadorComputadora <<Target>> {
     + elegirJugada(copia, turno) : Optional~Jugada~
   }
