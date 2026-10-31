@@ -910,8 +910,7 @@ ComandoMover --> Jugada
 ComandoMover --> Movimiento
 ComandoMover --> EstadoJuego : estadoAnterior
 
-AdaptadorMinimax "1" --> "1" MotorMinimax : adaptee
-DI
+AdaptadorMinimax "1" --> "1" MotorMinimax : adaptee\nDI
 AdaptadorMinimax --> NivelIA
 MotorMinimax "1" *-- "1" GeneradorJugadas
 GeneradorJugadas --> ValidadorMovimiento : DI
@@ -949,8 +948,7 @@ Juego ..> EnCurso : estado inicial
 Juego ..> Jugada : <<crea>>
 Juego ..> JugadorComputadora : jugarComputadora
 MotorMinimax ..> JugadaEvaluada : <<crea>>
-MotorMinimax ..> Tablero : mover / deshacer
-en la copia
+MotorMinimax ..> Tablero : mover / deshacer\nen la copia
 
 EnCurso ..> Transiciones
 Jaque ..> Transiciones
